@@ -517,7 +517,7 @@ namespace GymManagementSystem
                 }
             }
 
-            Console.WriteLine("\nGoodbye!");
+            Console.WriteLine("\n\nGoodbye!"_);
         }
     }
 }
