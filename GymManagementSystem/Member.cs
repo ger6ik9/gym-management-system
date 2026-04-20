@@ -51,6 +51,13 @@ namespace GymManagementSystem
             Console.WriteLine(Name + "'s membership has been deactivated.");
         }
 
+        // Reactivates a previously deactivated member
+        public void Reactivate()
+        {
+            isActive = true;
+            Console.WriteLine(Name + "'s membership has been reactivated.");
+        }
+
         // Returns a readable status string instead of true/false
         public string GetStatus()
         {

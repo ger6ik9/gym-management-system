@@ -28,62 +28,177 @@ namespace GymManagementSystem
             nextStaffId = 1;
         }
 
+        // ── Validation Helpers ──────────────────────────
+
+        // Keeps prompting until the user enters a non-empty string
+        private string ReadRequiredString(string prompt)
+        {
+            string input = "";
+            while (string.IsNullOrWhiteSpace(input))
+            {
+                Console.Write(prompt);
+                input = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(input))
+                    Console.WriteLine("  This field cannot be empty. Please try again.");
+            }
+            return input.Trim();
+        }
+
+        // Keeps prompting until the user enters a valid email (must contain @ and .)
+        private string ReadEmail(string prompt)
+        {
+            string input = "";
+            while (true)
+            {
+                Console.Write(prompt);
+                input = Console.ReadLine().Trim();
+                if (string.IsNullOrWhiteSpace(input))
+                {
+                    Console.WriteLine("  Email cannot be empty. Please try again.");
+                }
+                else if (!input.Contains("@") || !input.Contains("."))
+                {
+                    Console.WriteLine("  Invalid email format. Must contain @ and a dot.");
+                }
+                else
+                {
+                    break;
+                }
+            }
+            return input;
+        }
+
+        // Keeps prompting until the user enters a valid phone (digits only, 7-15 chars)
+        private string ReadPhone(string prompt)
+        {
+            string input = "";
+            while (true)
+            {
+                Console.Write(prompt);
+                input = Console.ReadLine().Trim();
+                bool allDigitsOrDash = true;
+
+                // Check each character is a digit or dash
+                foreach (char c in input)
+                {
+                    if (!char.IsDigit(c) && c != '-')
+                    {
+                        allDigitsOrDash = false;
+                        break;
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(input))
+                    Console.WriteLine("  Phone cannot be empty. Please try again.");
+                else if (!allDigitsOrDash)
+                    Console.WriteLine("  Phone can only contain numbers and dashes.");
+                else if (input.Length < 7 || input.Length > 15)
+                    Console.WriteLine("  Phone must be between 7 and 15 characters.");
+                else
+                    break;
+            }
+            return input;
+        }
+
+        // Keeps prompting until the user enters a positive whole number
+        private int ReadPositiveInt(string prompt)
+        {
+            int value = 0;
+            while (true)
+            {
+                Console.Write(prompt);
+                string input = Console.ReadLine();
+                if (int.TryParse(input, out value) && value > 0)
+                    break;
+                Console.WriteLine("  Please enter a valid positive number.");
+            }
+            return value;
+        }
+
+        // Checks if an email is already used by an existing member
+        private bool EmailExistsInMembers(string email)
+        {
+            foreach (Member m in members)
+            {
+                if (m.Email.ToLower() == email.ToLower())
+                    return true;
+            }
+            return false;
+        }
+
+        // Checks if an email is already used by an existing staff member
+        private bool EmailExistsInStaff(string email)
+        {
+            foreach (Staff s in staff)
+            {
+                if (s.Email.ToLower() == email.ToLower())
+                    return true;
+            }
+            return false;
+        }
+
         // ── Member Methods ──────────────────────────────
 
         // Prompts the user for details and adds a new member to the list
         public void AddMember()
         {
             Console.WriteLine("\n--- Add New Member ---");
-            Console.Write("Name            : ");
-            string name = Console.ReadLine();
 
-            Console.Write("Email           : ");
-            string email = Console.ReadLine();
+            // Validate name
+            string name = ReadRequiredString("Name            : ");
 
-            Console.Write("Phone           : ");
-            string phone = Console.ReadLine();
+            // Validate email - must be valid format and not already registered
+            string email;
+            while (true)
+            {
+                email = ReadEmail("Email           : ");
+                if (EmailExistsInMembers(email))
+                    Console.WriteLine("  That email is already registered to another member.");
+                else
+                    break;
+            }
+
+            // Validate phone
+            string phone = ReadPhone("Phone           : ");
 
             // Show membership options and get user's choice
-            Console.WriteLine("Membership Type : ");
-            Console.WriteLine("  1. Basic    - $29.99/month");
-            Console.WriteLine("  2. Premium  - $49.99/month");
-            Console.WriteLine("  3. VIP      - $79.99/month");
-            Console.Write("Choose (1-3)    : ");
-            string choice = Console.ReadLine();
-
-            // Convert number choice to membership type string
             string membershipType;
-            switch (choice)
+            while (true)
             {
-                case "1": membershipType = "Basic"; break;
-                case "2": membershipType = "Premium"; break;
-                case "3": membershipType = "VIP"; break;
-                default: membershipType = "Basic"; break; // Default to Basic if invalid
+                Console.WriteLine("Membership Type :");
+                Console.WriteLine("  1. Basic    - $29.99/month");
+                Console.WriteLine("  2. Premium  - $49.99/month");
+                Console.WriteLine("  3. VIP      - $79.99/month");
+                Console.Write("Choose (1-3)    : ");
+                string choice = Console.ReadLine();
+
+                if (choice == "1") { membershipType = "Basic"; break; }
+                if (choice == "2") { membershipType = "Premium"; break; }
+                if (choice == "3") { membershipType = "VIP"; break; }
+
+                Console.WriteLine("  Invalid choice. Please enter 1, 2, or 3.");
             }
 
             // Create the new member object and add it to the list
             Member newMember = new Member(nextMemberId, name, email, phone, membershipType);
             members.Add(newMember);
-            nextMemberId++; // Increment so the next member gets a unique ID
+            nextMemberId++;
 
-            Console.WriteLine("\n✔ Member added successfully! Member ID: " + (nextMemberId - 1));
+            Console.WriteLine("\n✔ Member added! Member ID: " + (nextMemberId - 1));
         }
 
         // Loops through all members and prints their info
         public void DisplayAllMembers()
         {
             Console.WriteLine("\n--- All Members ---");
-
-            // Handle the case where no members have been added yet
             if (members.Count == 0)
             {
                 Console.WriteLine("No members registered yet.");
                 return;
             }
-
             foreach (Member m in members)
             {
-                m.GetInfo(); // Calls the overridden GetInfo() in Member
+                m.GetInfo();
                 Console.WriteLine();
             }
         }
@@ -92,22 +207,79 @@ namespace GymManagementSystem
         public void DeactivateMember()
         {
             Console.WriteLine("\n--- Deactivate Member ---");
-            Console.Write("Enter Member ID : ");
-            int id;
 
-            // Validate that the input is actually a number
-            if (!int.TryParse(Console.ReadLine(), out id))
+            if (members.Count == 0)
             {
-                Console.WriteLine("Invalid ID entered.");
+                Console.WriteLine("No members registered yet.");
                 return;
             }
 
-            // Search for the member with the matching ID
+            // Show all members first so the user knows which IDs exist
+            Console.WriteLine("Current Members:");
+            foreach (Member m in members)
+                Console.WriteLine("  [" + m.MemberId + "] " + m.Name + " - " + m.GetStatus());
+
+            int id = ReadPositiveInt("\nEnter Member ID : ");
+
             foreach (Member m in members)
             {
                 if (m.MemberId == id)
                 {
+                    // Check if already inactive
+                    if (!m.IsActive)
+                    {
+                        Console.WriteLine(m.Name + " is already inactive.");
+                        return;
+                    }
                     m.Deactivate();
+                    return;
+                }
+            }
+            Console.WriteLine("Member ID " + id + " not found.");
+        }
+
+        // Finds a member by ID and reactivates their membership
+        public void ReactivateMember()
+        {
+            Console.WriteLine("\n--- Reactivate Member ---");
+
+            if (members.Count == 0)
+            {
+                Console.WriteLine("No members registered yet.");
+                return;
+            }
+
+            // Show all inactive members only
+            bool hasInactive = false;
+            Console.WriteLine("Inactive Members:");
+            foreach (Member m in members)
+            {
+                if (!m.IsActive)
+                {
+                    Console.WriteLine("  [" + m.MemberId + "] " + m.Name);
+                    hasInactive = true;
+                }
+            }
+
+            if (!hasInactive)
+            {
+                Console.WriteLine("No inactive members found.");
+                return;
+            }
+
+            int id = ReadPositiveInt("\nEnter Member ID : ");
+
+            foreach (Member m in members)
+            {
+                if (m.MemberId == id)
+                {
+                    // Check if already active
+                    if (m.IsActive)
+                    {
+                        Console.WriteLine(m.Name + " is already active.");
+                        return;
+                    }
+                    m.Reactivate();
                     return;
                 }
             }
@@ -120,41 +292,47 @@ namespace GymManagementSystem
         public void AddStaff()
         {
             Console.WriteLine("\n--- Add New Staff ---");
-            Console.Write("Name  : ");
-            string name = Console.ReadLine();
 
-            Console.Write("Email : ");
-            string email = Console.ReadLine();
+            // Validate name
+            string name = ReadRequiredString("Name  : ");
 
-            Console.Write("Phone : ");
-            string phone = Console.ReadLine();
+            // Validate email - must be valid and not already registered
+            string email;
+            while (true)
+            {
+                email = ReadEmail("Email : ");
+                if (EmailExistsInStaff(email))
+                    Console.WriteLine("  That email is already registered to another staff member.");
+                else
+                    break;
+            }
 
-            Console.Write("Role  : ");
-            string role = Console.ReadLine();
+            // Validate phone
+            string phone = ReadPhone("Phone : ");
+
+            // Validate role
+            string role = ReadRequiredString("Role  : ");
 
             // Create the new staff object and add it to the list
             Staff newStaff = new Staff(nextStaffId, name, email, phone, role);
             staff.Add(newStaff);
-            nextStaffId++; // Increment so the next staff gets a unique ID
+            nextStaffId++;
 
-            Console.WriteLine("\n✔ Staff added successfully! Staff ID: " + (nextStaffId - 1));
+            Console.WriteLine("\n✔ Staff added! Staff ID: " + (nextStaffId - 1));
         }
 
         // Loops through all staff and prints their info
         public void DisplayAllStaff()
         {
             Console.WriteLine("\n--- All Staff ---");
-
-            // Handle the case where no staff have been added yet
             if (staff.Count == 0)
             {
                 Console.WriteLine("No staff registered yet.");
                 return;
             }
-
             foreach (Staff s in staff)
             {
-                s.GetInfo(); // Calls the overridden GetInfo() in Staff
+                s.GetInfo();
                 Console.WriteLine();
             }
         }
@@ -165,75 +343,71 @@ namespace GymManagementSystem
         public void AddGymClass()
         {
             Console.WriteLine("\n--- Add New Gym Class ---");
-            Console.Write("Class Name       : ");
-            string className = Console.ReadLine();
 
-            Console.Write("Instructor Name  : ");
-            string instructor = Console.ReadLine();
-
-            Console.Write("Capacity         : ");
-            int capacity;
-
-            // If capacity input is invalid, default to 10
-            if (!int.TryParse(Console.ReadLine(), out capacity))
+            // Validate class name - check for duplicates
+            string className;
+            while (true)
             {
-                capacity = 10;
+                className = ReadRequiredString("Class Name       : ");
+                bool duplicate = false;
+                foreach (GymClass gc in gymClasses)
+                {
+                    if (gc.ClassName.ToLower() == className.ToLower())
+                    {
+                        duplicate = true;
+                        break;
+                    }
+                }
+                if (duplicate)
+                    Console.WriteLine("  A class with that name already exists.");
+                else
+                    break;
             }
 
-            // Create the new gym class and add it to the list
+            // Validate instructor name
+            string instructor = ReadRequiredString("Instructor Name  : ");
+
+            // Validate capacity - must be between 1 and 100
+            int capacity;
+            while (true)
+            {
+                capacity = ReadPositiveInt("Capacity (1-100) : ");
+                if (capacity <= 100)
+                    break;
+                Console.WriteLine("  Capacity cannot exceed 100.");
+            }
+
+            // Create and add the new gym class
             GymClass newClass = new GymClass(className, instructor, capacity);
             gymClasses.Add(newClass);
 
             Console.WriteLine("\n✔ Gym class added successfully!");
         }
 
-        // Lets the user pick a member and a class, then enrolls them
+        // Lets the user pick a member and a class then enrolls them
         public void EnrollMemberInClass()
         {
             Console.WriteLine("\n--- Enroll Member in Class ---");
 
-            // Can't enroll if there are no members or no classes yet
             if (members.Count == 0)
             {
                 Console.WriteLine("No members registered yet.");
                 return;
             }
-
             if (gymClasses.Count == 0)
             {
                 Console.WriteLine("No gym classes available yet.");
                 return;
             }
 
-            // Display all members so the user can pick one
+            // Display all members
             Console.WriteLine("Members:");
             foreach (Member m in members)
-            {
                 Console.WriteLine("  [" + m.MemberId + "] " + m.Name + " - " + m.GetStatus());
-            }
-            Console.Write("Enter Member ID  : ");
-            int memberId;
-            if (!int.TryParse(Console.ReadLine(), out memberId))
-            {
-                Console.WriteLine("Invalid ID.");
-                return;
-            }
 
-            // Display all classes so the user can pick one
-            Console.WriteLine("\nGym Classes:");
-            for (int i = 0; i < gymClasses.Count; i++)
-            {
-                Console.WriteLine("  [" + (i + 1) + "] " + gymClasses[i].ClassName + " - " + gymClasses[i].InstructorName);
-            }
-            Console.Write("Choose Class     : ");
-            int classChoice;
-            if (!int.TryParse(Console.ReadLine(), out classChoice) || classChoice < 1 || classChoice > gymClasses.Count)
-            {
-                Console.WriteLine("Invalid choice.");
-                return;
-            }
+            int memberId = ReadPositiveInt("Enter Member ID  : ");
 
-            // Find the selected member object by their ID
+            // Find the selected member
             Member selectedMember = null;
             foreach (Member m in members)
             {
@@ -244,14 +418,28 @@ namespace GymManagementSystem
                 }
             }
 
-            // Make sure the member ID actually exists
             if (selectedMember == null)
             {
-                Console.WriteLine("Member not found.");
+                Console.WriteLine("Member ID " + memberId + " not found.");
                 return;
             }
 
-            // Call Enroll() on the selected class - it handles all validation
+            // Display all classes
+            Console.WriteLine("\nGym Classes:");
+            for (int i = 0; i < gymClasses.Count; i++)
+                Console.WriteLine("  [" + (i + 1) + "] " + gymClasses[i].ClassName + " - " + gymClasses[i].InstructorName);
+
+            // Validate class selection
+            int classChoice;
+            while (true)
+            {
+                classChoice = ReadPositiveInt("Choose Class     : ");
+                if (classChoice >= 1 && classChoice <= gymClasses.Count)
+                    break;
+                Console.WriteLine("  Please choose a number between 1 and " + gymClasses.Count + ".");
+            }
+
+            // Call Enroll() on the selected class - it handles capacity and duplicate checks
             gymClasses[classChoice - 1].Enroll(selectedMember);
         }
 
@@ -268,19 +456,20 @@ namespace GymManagementSystem
 
             // Show all classes for the user to choose from
             for (int i = 0; i < gymClasses.Count; i++)
-            {
                 Console.WriteLine("  [" + (i + 1) + "] " + gymClasses[i].ClassName);
-            }
-            Console.Write("Choose Class : ");
+
+            // Validate class selection
             int choice;
-            if (!int.TryParse(Console.ReadLine(), out choice) || choice < 1 || choice > gymClasses.Count)
+            while (true)
             {
-                Console.WriteLine("Invalid choice.");
-                return;
+                choice = ReadPositiveInt("Choose Class : ");
+                if (choice >= 1 && choice <= gymClasses.Count)
+                    break;
+                Console.WriteLine("  Please choose a number between 1 and " + gymClasses.Count + ".");
             }
 
             Console.WriteLine();
-            gymClasses[choice - 1].DisplayRoster(); // Display the selected class roster
+            gymClasses[choice - 1].DisplayRoster();
         }
 
         // ── Main Menu ───────────────────────────────────
@@ -292,20 +481,19 @@ namespace GymManagementSystem
 
             while (running)
             {
-                // Display the menu options
-       
-                Console.WriteLine("    GYM MANAGEMENT SYSTEM     ");
-                Console.WriteLine("══════════════════════════════");
-                Console.WriteLine("  1. Add Member               ");
-                Console.WriteLine("  2. View All Members         ");
-                Console.WriteLine("  3. Deactivate Member        ");
-                Console.WriteLine("  4. Add Staff                ");
-                Console.WriteLine("  5. View All Staff           ");
-                Console.WriteLine("  6. Add Gym Class            ");
-                Console.WriteLine("  7. Enroll Member in Class   ");
-                Console.WriteLine("  8. View Class Roster        ");
-                Console.WriteLine("  9. Exit                     ");
-                Console.WriteLine("══════════════════════════════");
+                Console.WriteLine("    GYM MANAGEMENT SYSTEM       ");
+                Console.WriteLine("=================================");
+                Console.WriteLine("  1.  Add Member                ");
+                Console.WriteLine("  2.  View All Members          ");
+                Console.WriteLine("  3.  Deactivate Member         ");
+                Console.WriteLine("  4.  Reactivate Member         ");
+                Console.WriteLine("  5.  Add Staff                 ");
+                Console.WriteLine("  6.  View All Staff            ");
+                Console.WriteLine("  7.  Add Gym Class             ");
+                Console.WriteLine("  8.  Enroll Member in Class    ");
+                Console.WriteLine("  9.  View Class Roster         ");
+                Console.WriteLine("  10. Exit                      ");
+                Console.WriteLine("================================");
                 Console.Write("Choose an option : ");
 
                 string input = Console.ReadLine();
@@ -316,14 +504,15 @@ namespace GymManagementSystem
                     case "1": AddMember(); break;
                     case "2": DisplayAllMembers(); break;
                     case "3": DeactivateMember(); break;
-                    case "4": AddStaff(); break;
-                    case "5": DisplayAllStaff(); break;
-                    case "6": AddGymClass(); break;
-                    case "7": EnrollMemberInClass(); break;
-                    case "8": DisplayClassRoster(); break;
-                    case "9": running = false; break; // Exit the loop
+                    case "4": ReactivateMember(); break;
+                    case "5": AddStaff(); break;
+                    case "6": DisplayAllStaff(); break;
+                    case "7": AddGymClass(); break;
+                    case "8": EnrollMemberInClass(); break;
+                    case "9": DisplayClassRoster(); break;
+                    case "10": running = false; break;
                     default:
-                        Console.WriteLine("Invalid option. Please choose 1-9.");
+                        Console.WriteLine("Invalid option. Please choose 1-10.");
                         break;
                 }
             }
